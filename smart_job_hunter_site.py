@@ -34,6 +34,19 @@ if not GROQ_API_KEY:
     st.stop()
 
 # ============================================================
+# INITIALISATION SESSION STATE
+# ============================================================
+
+def init_session_state():
+    """Initialise les variables de session"""
+    if 'emails_generes' not in st.session_state:
+        st.session_state.emails_generes = {}
+    if 'offres_cache' not in st.session_state:
+        st.session_state.offres_cache = []
+    if 'recherche_effectuee' not in st.session_state:
+        st.session_state.recherche_effectuee = False
+
+# ============================================================
 # STYLES CSS
 # ============================================================
 
@@ -384,6 +397,9 @@ def exporter_excel(offres_analysees, profil):
 def main():
     st.set_page_config(page_title="Smart Job Hunter Pro", page_icon="🎯", layout="wide")
     
+    # Initialiser session state
+    init_session_state()
+    
     st.markdown("""
     <div class="main-header">
         <h1>🎯 Smart Job Hunter Pro</h1>
@@ -398,6 +414,9 @@ def main():
         st.markdown("---")
         if st.button("🗑️ Nouveau CV", use_container_width=True):
             supprimer_profil()
+            st.session_state.emails_generes = {}
+            st.session_state.offres_cache = []
+            st.session_state.recherche_effectuee = False
             st.rerun()
     
     profil = charger_profil()
@@ -497,13 +516,20 @@ def main():
         offres_filtrees = [o for o in offres_analysees if o["analyse"].get("score", 0) >= score_min]
         offres_filtrees.sort(key=lambda x: x["analyse"].get("score", 0), reverse=True)
         
+        # Sauvegarder dans session state
+        st.session_state.offres_cache = offres_filtrees
+        st.session_state.recherche_effectuee = True
+        st.session_state.emails_generes = {}  # Réinitialiser les emails
+        
         col1, col2, col3 = st.columns(3)
         col1.metric("📊 Total analysé", len(offres[:40]))
         col2.metric("✅ Offres pertinentes", len(offres_filtrees))
         if offres_filtrees:
             col3.metric("🏆 Meilleur score", f"{offres_filtrees[0]['analyse'].get('score', 0)}%")
-        
-        for idx, item in enumerate(offres_filtrees):
+    
+    # Afficher les offres depuis le cache
+    if st.session_state.recherche_effectuee and st.session_state.offres_cache:
+        for idx, item in enumerate(st.session_state.offres_cache):
             offre = item["offre"]
             analyse = item["analyse"]
             score = analyse.get("score", 0)
@@ -514,6 +540,9 @@ def main():
                 badge = "🟡 Bon"
             else:
                 badge = "🟠 À améliorer"
+            
+            # Créer une clé unique pour cette offre
+            offre_key = f"{offre['titre']}_{offre['entreprise']}_{idx}"
             
             with st.expander(f"**{offre['titre']}** — {offre['entreprise']}"):
                 col1, col2 = st.columns([3, 1])
@@ -528,14 +557,23 @@ def main():
                 if offre.get("url"):
                     st.link_button("🔗 Voir l'offre originale", offre["url"])
                 
-                if st.button(f"✉️ Générer email", key=f"email_{idx}"):
+                # Bouton générer email avec session state
+                if st.button(f"✉️ Générer email", key=f"btn_{idx}_{offre_key}"):
                     with st.spinner("✍️ Génération..."):
                         email = generer_email(profil, offre)
-                        item["email"] = email
-                    st.text_area("📧 Email prêt à copier :", email, height=200)
+                        st.session_state.emails_generes[offre_key] = email
+                        st.rerun()
+                
+                # Afficher l'email s'il a été généré
+                if offre_key in st.session_state.emails_generes:
+                    st.text_area("📧 Email prêt à copier :", 
+                                st.session_state.emails_generes[offre_key], 
+                                height=200, 
+                                key=f"email_{idx}_{offre_key}")
         
-        if offres_filtrees:
-            excel_data = exporter_excel(offres_filtrees, profil)
+        # Export Excel
+        if st.session_state.offres_cache:
+            excel_data = exporter_excel(st.session_state.offres_cache, profil)
             st.download_button(
                 label="📥 Télécharger le rapport Excel",
                 data=excel_data,
