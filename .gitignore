@@ -1,0 +1,9 @@
+# .gitignore
+.env
+__pycache__/
+*.pyc
+profil_sauvegarde.pkl
+offres_*.xlsx
+.venv/
+venv/
+.streamlit/
