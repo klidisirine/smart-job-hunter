@@ -1,5 +1,6 @@
 # smart-job-hunter
 # 🎯 Smart Job Hunter Pro
+🚀 Live Demo: https://smart-job-hunter-komudds4e3jvazmicprudh.streamlit.app/
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://smart-job-hunter.streamlit.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
