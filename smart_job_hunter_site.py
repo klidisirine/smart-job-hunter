@@ -33,7 +33,6 @@ if not GROQ_API_KEY:
     st.error("❌ Clé API GROQ manquante. Configure GROQ_API_KEY dans .env ou les secrets Streamlit")
     st.stop()
 
-# ... le reste du code
 # ============================================================
 # STYLES CSS
 # ============================================================
@@ -193,7 +192,7 @@ def extraire_profil_intelligent(texte_cv):
     
     # Niveau
     if any(x in texte for x in ["cycle ingenieur", "cycle ingénieur", "5ème", "5eme"]):
-        profil["niveau"] = "Cycle Ingénieur (PFE)"
+        profil["niveau"] = "Cycle Ingénieur"
     elif any(x in texte for x in ["master", "m2"]):
         profil["niveau"] = "Master"
     elif any(x in texte for x in ["licence", "license", "3ème", "3eme"]):
@@ -298,22 +297,51 @@ def analyser_correspondance(profil, offre):
     }
 
 def generer_email(profil, offre):
+    """Génère un email personnalisé selon le profil de l'utilisateur"""
     nom = profil.get("nom", "Candidat")
-    titre = offre.get("titre", "poste")
+    email_user = profil.get("email", "")
+    titre = offre.get("titre", "le poste")
     entreprise = offre.get("entreprise", "votre entreprise")
     
-    email = f"""Madame, Monsieur,
+    # Récupérer les informations du profil
+    niveau = profil.get("niveau", "")
+    ecole = profil.get("ecole", "")
+    domaine = profil.get("domaine", "")
+    
+    # Récupérer les compétences
+    competences = profil.get("langages", []) + profil.get("frameworks", [])
+    competences_str = ", ".join(competences[:4]) if competences else "mes compétences techniques"
+    
+    # Construire la phrase de présentation selon les informations disponibles
+    if niveau and ecole:
+        presentation = f"Actuellement {niveau} à {ecole}"
+    elif ecole:
+        presentation = f"Étudiant à {ecole}"
+    elif niveau:
+        presentation = f"Titulaire d'un {niveau}"
+    else:
+        presentation = "Je suis étudiant"
+    
+    # Ajouter le domaine si disponible et pertinent
+    if domaine and domaine != "Autre" and domaine != "Non détecté":
+        presentation += f" en {domaine}"
+    
+    # Construction de l'email
+    email = f"""Objet : Candidature pour le poste de {titre}
 
-Actuellement étudiant en {profil.get('niveau', 'cycle ingénieur')}, je suis vivement intéressé par le poste de {titre} au sein de {entreprise}.
+Madame, Monsieur,
 
-Mes compétences techniques et ma motivation pour ce domaine me permettraient de contribuer efficacement à vos projets.
+{presentation}, je suis vivement intéressé par le poste de {titre} au sein de {entreprise}.
 
-Je me tiens à votre disposition pour un entretien afin de vous exposer plus en détail ma candidature.
+Mon parcours m'a permis d'acquérir des compétences solides en {competences_str}.
+
+Je serais ravi de vous rencontrer pour vous exposer plus en détail ma motivation et mes compétences.
 
 Dans l'attente de votre retour, je vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées.
 
 {nom}
-{profil.get('email', '')}"""
+{email_user if email_user else ''}"""
+    
     return email
 
 def exporter_excel(offres_analysees, profil):
